@@ -5,9 +5,26 @@ import yfinance as yf
 
 import matplotlib.pyplot as plt
 import seaborn as sns
+import streamlit as st
 
 
-symbols = ['AAPL', 'NVDA', 'ACI', 'FTFT', 'INBK']
+symbols = []
+myTickers = st.text_input("Enter stock tickers eg. AAPL NVDA...")
+
+ticker_list = myTickers.replace(",", " ").split()
+for t in ticker_list:
+    try:
+        ticker = yf.Ticker(t)
+        info = ticker.info  # fetch ticker info
+        if info and info.get("regularMarketPrice") is not None:
+            symbols.append(t)  # append ticker symbol, not the object
+    except Exception as e:
+        st.write(f"Error fetching {t}: {e}")
+
+st.write("Valid tickers:", symbols)
+
+# get stock data
+#symbols = ['AAPL', 'NVDA', 'ACI', 'FTFT', 'INBK']
 stock_data = yf.download(tickers=symbols, period='1y')
 stock_df = pd.DataFrame(stock_data)
 price_df = stock_df["Close"].dropna()
@@ -15,6 +32,7 @@ price_df = stock_df["Close"].dropna()
 
 # Calculating the daily returns throughout the year
 returns = price_df.pct_change().dropna() # K_i
+
 # Creating the expected return matrix, using a historical sample
 expected_return = np.array(returns.mean()) 
 
@@ -40,18 +58,34 @@ mvp_df = pd.DataFrame({
 if (not np.isclose(sum(w_mvp), 1)):
     raise("Weight is nowhere near 1")
 
+#print(mvp_df.round(4))
 
-# Format for readability
-print(mvp_df.round(4))
+
+st.write(mvp_df.round(4))
+
+# Plot weights
+plt.figure(figsize=(8,5))
+plt.bar(mvp_df["Stock"], mvp_df["MVP Weight"])
+plt.xlabel("Stock")
+plt.ylabel("MVP Weight")
+plt.title("Minimum Variance Portfolio Weights")
+plt.xticks(rotation=45)
+st.pyplot(plt)
+
+
+
+
+#print(myTickers)
+
 
 
 
 corr_return_matrix = returns.corr()
 
-# corr_matrix is your DataFrame of correlations())()()()
-# plt.figure(figsize=(12, 8))
-# sns.heatmap(corr_return_matrix, cmap="coolwarm", center=0, annot=False, linewidths=0.5)
 
-# plt.title("Stock Correlation Heatmap", fontsize=16)
-# plt.show()
+plt.figure(figsize=(12, 8))
+sns.heatmap(corr_return_matrix, cmap="coolwarm", center=0, annot=False, linewidths=0.5)
+
+plt.title("Stock Correlation Heatmap", fontsize=16)
+plt.show()
 
