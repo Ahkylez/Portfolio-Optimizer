@@ -8,20 +8,24 @@ import seaborn as sns
 import streamlit as st
 
 
-symbols = []
-myTickers = st.text_input("Enter stock tickers eg. AAPL NVDA...")
+st.title("Simple Portfolio Optimizer")
 
-ticker_list = myTickers.replace(",", " ").split()
-for t in ticker_list:
-    try:
-        ticker = yf.Ticker(t)
-        info = ticker.info  # fetch ticker info
-        if info and info.get("regularMarketPrice") is not None:
-            symbols.append(t)  # append ticker symbol, not the object
-    except Exception as e:
-        st.write(f"Error fetching {t}: {e}")
+with st.sidebar:
+    st.header("Stock Symbols")
+    symbols = []
+    myTickers = st.text_input("Enter stock tickers eg. AAPL NVDA...")
 
-st.write("Valid tickers:", symbols)
+    ticker_list = myTickers.replace(",", " ").split()
+    for t in ticker_list:
+        try:
+            ticker = yf.Ticker(t)
+            info = ticker.info  
+            if info and info.get("regularMarketPrice") is not None:
+                symbols.append(t)
+        except Exception as e:
+            st.write(f"Error fetching {t}: {e}")
+
+
 
 # get stock data
 #symbols = ['AAPL', 'NVDA', 'ACI', 'FTFT', 'INBK']
@@ -87,5 +91,5 @@ plt.figure(figsize=(12, 8))
 sns.heatmap(corr_return_matrix, cmap="coolwarm", center=0, annot=False, linewidths=0.5)
 
 plt.title("Stock Correlation Heatmap", fontsize=16)
-plt.show()
+st.pyplot(plt)
 
