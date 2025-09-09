@@ -18,6 +18,8 @@ def test_mvp(w_mvp):
     if (not np.isclose(sum(w_mvp), 1)):
         raise("Weight is nowhere near 1")
 
+def number_of_securites(expected_return):
+    return np.shape(expected_return)[0]
 
 # Get weights
 def calculate_mvp(expected_return, cov_return_matrix):
@@ -34,5 +36,24 @@ def calculate_mvp(expected_return, cov_return_matrix):
 def portfolio_return(w_mvp, expected_return):
     return w_mvp @ expected_return.T
 
+def portfolio_log_return(w_mvp, expected_log_return):
+    return w_mvp @ expected_log_return.T
+
+
 def portfolio_risk(w_mvp, cov_return_matrix):
     return w_mvp @ cov_return_matrix @ w_mvp.T
+
+
+def log_returns_from_prices(price_df: pd.DataFrame) -> pd.DataFrame:
+    return np.log(price_df).diff().dropna()
+
+
+def expected_log_returns(log_returns):
+    return log_returns.mean().to_numpy()
+
+
+
+# Sharpe Ratio
+
+
+# Return vs volatility
