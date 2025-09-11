@@ -12,7 +12,7 @@ def fetch_prices(symbols: list[str], period='1y', interval="1d") -> pd.DataFrame
         period (str): The time period for the data (e.g., '1y', '6mo', 'max').
         interval (str): The data interval (e.g., '1d', '1wk', '1mo').
 
-    Returns:
+    Return:
         pd.DataFrame: A DataFrame containing the 'Close' prices for each symbol.
                       Returns an empty DataFrame if no data is found or an error occurs.
     """

@@ -3,12 +3,76 @@ import numpy as np
 from numpy.linalg import inv
 
 # Calculating the daily returns throughout the year
-def daily_returns(price_df):
-    return price_df.pct_change().dropna() # K_i
+def daily_returns(prices: pd.DataFrame) -> pd.DataFrame:
+    """
+    Given stock price data frame, return data frame of the daily return or the percent change: 
+    (Current Value - Previous Value) / Previous Value. 
 
-# Creating the expected return matrix, using a historical sample
-def expected_returns(returns):
-    return np.array(returns.mean()) 
+    Args:
+        prices (pd.DataFrame): Data frame of stock prices
+
+    Return: 
+        pd.DataFrame: Data frame of daily return. With all NAN removed.
+    """
+    return prices.pct_change().dropna() # K_i
+
+def daily_log_returns(prices: pd.DataFrame) -> pd.DataFrame:
+    """
+    Given stock price data frame, return data frame of the daily log return or the percent change: 
+    (Log(Current Value) - log(Previous Value)) / log(Previous Value). 
+
+    Args:
+        prices (pd.DataFrame): Data frame of stock prices
+
+    Return: 
+        pd.DataFrame: Data frame of daily log return. With all NAN removed.
+    """
+    return np.log(prices).diff().dropna()
+
+# Creating the expected return and log return matrix, using a historical sample
+def expected_returns(returns: pd.DataFrame, annualize: bool = False, trading_periods: int = 252) -> np.ndarray: 
+    """
+    Calculates the expected returns from a DataFrame of historical returns.
+
+    Args:
+        returns (pd.DataFrame): A DataFrame where each column represents the 
+                                historical returns of an asset.
+        annualize (bool): If True, annualizes the returns. Defaults to False.
+        trading_periods (int): The number of trading periods in a year. 
+                               Used for annualization. Defaults to 252 for daily data.
+
+    Returns:
+        np.ndarray: A NumPy array of the mean (expected) returns for each asset.
+    """
+    mean_returns = returns.mean()
+
+    if annualize:
+        mean_returns *= trading_periods
+
+    return np.array(mean_returns())
+        
+
+def expected_log_returns(log_returns: pd.DataFrame, annualize: bool = False, trading_periods: int = 252) -> np.ndarray:
+    """
+    Calculates the expected (mean) log returns for a portfolio of assets.
+
+    Args:
+        log_returns (pd.DataFrame): A DataFrame where each column represents the 
+                                    historical log returns of an asset.
+        annualize (bool): If True, annualizes the returns. Defaults to False.
+        trading_periods (int): The number of trading periods in a year. 
+                               Used for annualization. Defaults to 252 for daily data.
+
+    Returns:
+        np.ndarray: A NumPy array containing the mean log return for each asset.
+    """
+
+    mean_log_returns = log_returns.mean()
+    
+    if annualize:
+        mean_log_returns *= trading_periods
+    
+    return mean_log_returns.to_numpy()
 
 # Get covarience of return matrix
 def cov_return_matrix(returns):
@@ -44,12 +108,8 @@ def portfolio_risk(w_mvp, cov_return_matrix):
     return w_mvp @ cov_return_matrix @ w_mvp.T
 
 
-def log_returns_from_prices(price_df: pd.DataFrame) -> pd.DataFrame:
-    return np.log(price_df).diff().dropna()
 
 
-def expected_log_returns(log_returns):
-    return log_returns.mean().to_numpy()
 
 
 

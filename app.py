@@ -45,7 +45,7 @@ if not symbols:
 data = fetch_prices(symbols)
 
 returns = daily_returns(data)
-log_returns = log_returns_from_prices(data)
+log_returns =  daily_log_returns(data)
 
 expected_returns = expected_returns(returns)
 expected_log_returns = expected_log_returns(log_returns)
