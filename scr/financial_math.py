@@ -49,9 +49,8 @@ def expected_returns(returns: pd.DataFrame, annualize: bool = False, trading_per
     if annualize:
         mean_returns *= trading_periods
 
-    return np.array(mean_returns())
+    return np.array(mean_returns)
         
-
 def expected_log_returns(log_returns: pd.DataFrame, annualize: bool = False, trading_periods: int = 252) -> np.ndarray:
     """
     Calculates the expected (mean) log returns for a portfolio of assets.
