@@ -8,6 +8,7 @@ import seaborn as sns
 from scipy.optimize import minimize
 import numpy as np
 
+st.set_page_config(page_title="Simple Portfolio Optimizer", layout="wide")
 st.title("Simple Portfolio Optimizer")
 
 # Add 1 dollar back test
@@ -41,7 +42,8 @@ if not symbols:
     st.stop()
 
 # Do Financial Math
-data = get_symbol_close_data(symbols)
+data = fetch_prices(symbols)
+
 returns = daily_returns(data)
 log_returns = log_returns_from_prices(data)
 
