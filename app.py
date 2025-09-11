@@ -6,13 +6,17 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 from scipy.optimize import minimize
-import numpy
+import numpy as np
 
 st.title("Simple Portfolio Optimizer")
 
+# Add 1 dollar back test
+# compare to s&p 500
 
-# Get user input for stock ticker
+
+# Sidebar for properties
 with st.sidebar:
+    # Get Stock symbols from user
     st.header("Stock Symbols")
     symbols = []
     myTickers = st.text_input("Enter stock tickers eg. AAPL NVDA...")
@@ -26,6 +30,10 @@ with st.sidebar:
                 symbols.append(t)
         except Exception as e:
             st.write(f"Error fetching {t}: {e}")
+    st.divider()
+    # Slider for number of portfolios
+    number_of_portfolios = st.slider(
+        "Number of portfolios to simulate", 100, 1000, 10000)
 
 # So no errors appear when no data is entered
 if not symbols:
@@ -60,18 +68,10 @@ st.write(f'Portfolio Dailys Return: {port_return}')
 st.write(f'Portfolio Dailys Log Return: {port_log_return}')
 st.write(f'Portfolio Risk: {port_risk}')
 
-# Plot weights
-plt.figure(figsize=(8,5))
-plt.bar(mvp_df["Stock"], mvp_df["MVP Weight"])
-plt.xlabel("Stock")
-plt.ylabel("MVP Weight")
-plt.title("Minimum Variance Portfolio Weights")
-plt.xticks(rotation=45)
-st.pyplot(plt)
 
 # Return vs Volatility Chart
 n = number_of_securites(expected_returns)
-number_of_portfolios = 10000 # make scalar
+# number_of_portfolios = 10000 # make scalar
 weight = np.zeros((number_of_portfolios, n))
 expectedReturn = np.zeros(number_of_portfolios)
 expectedVolatility = np.zeros(number_of_portfolios)
@@ -94,13 +94,49 @@ for k in range(number_of_portfolios):
 maxIndex = sharpeRatio.argmax()
 weight[maxIndex,:]
 
+
+
+## Clean this
+# ---- Combined bar chart: MVP vs Max Sharpe ----
+max_sharpe_w = weight[maxIndex, :]
+
+fig, ax = plt.subplots(figsize=(9,5))
+x = np.arange(n)
+bar_w = 0.4
+
+ax.bar(x - bar_w/2, w_mvp,       bar_w, label='MVP')
+ax.bar(x + bar_w/2, max_sharpe_w, bar_w, label='Max Sharpe')
+
+ax.set_xticks(x)
+ax.set_xticklabels(symbols, rotation=45)
+ax.set_ylabel("Weight")
+ax.set_title("Portfolio Weights: MVP vs Max Sharpe")
+ax.legend()
+st.pyplot(fig)
+
+
+
 plt.figure(figsize=(12,10))
 plt.scatter(expectedVolatility, expectedReturn, c=sharpeRatio)
 plt.xlabel("Expected Volatility")
 plt.ylabel("Expected Log Returns")
 plt.colorbar(label='SR')
-plt.scatter(expectedVolatility[maxIndex],expectedReturn[maxIndex], c='red')
+plt.scatter(expectedVolatility[maxIndex],expectedReturn[maxIndex], c='red', label='Max Sharpe Point')
+
+Sigma_np = Sigma.values if hasattr(Sigma, "values") else Sigma
+
+mvp_vol = float(np.sqrt(w_mvp @ Sigma_np @ w_mvp))
+mvp_ret = float(expected_log_returns @ w_mvp)
+
+plt.scatter(mvp_vol, mvp_ret, marker='*', s=300, edgecolors='k', linewidths=1.2, label='MVP')
+plt.legend()
+
 st.pyplot(plt)
+
+
+
+
+
 
 
 def negativeSR(w):
@@ -136,13 +172,11 @@ for R in returns:
     opt = minimize(minimizeMyVolatility, w0, method='SLSQP', bounds=bounds, constraints=constraints)
     volatility_opt.append(opt['fun'])
 
+# corr_return_matrix = returns.corr()
 
 
-corr_return_matrix = returns.corr()
+# plt.figure(figsize=(12, 8))
+# sns.heatmap(corr_return_matrix, cmap="coolwarm", center=0, annot=False, linewidths=0.5)
 
-
-plt.figure(figsize=(12, 8))
-sns.heatmap(corr_return_matrix, cmap="coolwarm", center=0, annot=False, linewidths=0.5)
-
-plt.title("Stock Correlation Heatmap", fontsize=16)
-st.pyplot(plt)
+# plt.title("Stock Correlation Heatmap", fontsize=16)
+# st.pyplot(plt)
