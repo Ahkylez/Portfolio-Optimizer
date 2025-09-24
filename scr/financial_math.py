@@ -1,110 +1,133 @@
 import pandas as pd
 import numpy as np
 from numpy.linalg import inv
+import yfinance as yf
 
-# Calculating the daily returns throughout the year
-def daily_returns(prices: pd.DataFrame) -> pd.DataFrame:
-    """
-    Given stock price data frame, return data frame of the daily return or the percent change: 
-    (Current Value - Previous Value) / Previous Value. 
 
-    Args:
-        prices (pd.DataFrame): Data frame of stock prices
+class PortfolioOptimizer:
+    def __init__(self, symbols: list[str], trading_periods=252):
+        self.symbols = symbols
+        self.trading_periods = trading_periods
 
-    Return: 
-        pd.DataFrame: Data frame of daily return. With all NAN removed.
-    """
-    return prices.pct_change().dropna() # K_i
+        self.prices = self._fetch_prices()
 
-def daily_log_returns(prices: pd.DataFrame) -> pd.DataFrame:
-    """
-    Given stock price data frame, return data frame of the daily log return or the percent change: 
-    (Log(Current Value) - log(Previous Value)) / log(Previous Value). 
+        self.returns, self.log_returns = self._calculate_all_returns()
 
-    Args:
-        prices (pd.DataFrame): Data frame of stock prices
 
-    Return: 
-        pd.DataFrame: Data frame of daily log return. With all NAN removed.
-    """
-    return np.log(prices).diff().dropna()
 
-# Creating the expected return and log return matrix, using a historical sample
-def expected_returns(returns: pd.DataFrame, annualize: bool = False, trading_periods: int = 252) -> np.ndarray: 
-    """
-    Calculates the expected returns from a DataFrame of historical returns.
+        self.expected_returns = self.returns.mean().to_numpy()
+        self.expected_log_returns = self.log_returns.mean().to_numpy()
 
-    Args:
-        returns (pd.DataFrame): A DataFrame where each column represents the 
-                                historical returns of an asset.
-        annualize (bool): If True, annualizes the returns. Defaults to False.
-        trading_periods (int): The number of trading periods in a year. 
-                               Used for annualization. Defaults to 252 for daily data.
-
-    Returns:
-        np.ndarray: A NumPy array of the mean (expected) returns for each asset.
-    """
-    mean_returns = returns.mean()
-
-    if annualize:
-        mean_returns *= trading_periods
-
-    return np.array(mean_returns)
+        self.n = len(self.symbols)
+        self.cov_return_matrix = self._get_cov_matrix(self.returns)
         
-def expected_log_returns(log_returns: pd.DataFrame, annualize: bool = False, trading_periods: int = 252) -> np.ndarray:
-    """
-    Calculates the expected (mean) log returns for a portfolio of assets.
+    def _fetch_prices(self, period='1y', interval="1d") -> pd.DataFrame:
+        """
+        Fetches histrocial closing prices for a list of stock symbols.
 
-    Args:
-        log_returns (pd.DataFrame): A DataFrame where each column represents the 
-                                    historical log returns of an asset.
-        annualize (bool): If True, annualizes the returns. Defaults to False.
-        trading_periods (int): The number of trading periods in a year. 
-                               Used for annualization. Defaults to 252 for daily data.
+        Args:
+            symbols (list[str]): A list of stock ticker symbols (e.g., ['AAPL', 'MSFT']).
+            period (str): The time period for the data (e.g., '1y', '6mo', 'max').
+            interval (str): The data interval (e.g., '1d', '1wk', '1mo').
 
-    Returns:
-        np.ndarray: A NumPy array containing the mean log return for each asset.
-    """
+        Return:
+            pd.DataFrame: A DataFrame containing the 'Close' prices for each symbol.
+                        Returns an empty DataFrame if no data is found or an error occurs.
+        """
+        if not self.symbols:
+            return pd.DataFrame() 
+        
+        try:
 
-    mean_log_returns = log_returns.mean()
+            stock_data = yf.download(tickers=self.symbols, period=period, interval=interval, progress=False)
+            
+            if stock_data.empty:
+                print("No data found for given symbols")
+                return pd.DataFrame()
+            
+            stock_df = pd.DataFrame(stock_data)
+            price_df = stock_df["Close"].dropna()
+            return price_df
+        except:
+            return pd.DataFrame()
+
+
+    def _calculate_all_returns(self) -> tuple[pd.DataFrame, pd.DataFrame]:
+        simple_returns = self.prices.pct_change().dropna()
+        log_returns = np.log(self.prices).diff().dropna()
+        
+        # align index so dates do not mismatch
+        common_index = simple_returns.index.intersection(log_returns.index)
+
+        simple_returns = simple_returns.loc[common_index]
+        log_returns = log_returns.loc[common_index]
+        
+        return simple_returns, log_returns
+
+    # Get covarience of matrix
+    def _get_cov_matrix(self, returns) -> np.ndarray:
+        return returns.cov().to_numpy()
+
+    # Get weights, explain math later in doc string
+    def calculate_mvp(self) -> np.ndarray:
+        u = np.ones(self.n) # allows me to get feasible set
+        inv_cov_return_matrix = inv(self.cov_return_matrix)
+        num = u @ inv_cov_return_matrix
+        den = u @ inv_cov_return_matrix @ u.T
+        w_mvp = num/den
+        return w_mvp
     
-    if annualize:
-        mean_log_returns *= trading_periods
+    def compute_sharpe_ratio_weights(self, number_of_portfolios):
+        weight = np.zeros((number_of_portfolios, self.n))
+        expectedReturn = np.zeros(number_of_portfolios)
+        expectedVolatility = np.zeros(number_of_portfolios)
+        sharpeRatio = np.zeros(number_of_portfolios)
+
+        Sigma = self.log_returns.cov()
+
+        for k in range(number_of_portfolios):
+            # generate random weight vector
+            w = np.array(np.random.random(self.n))
+            w = w / np.sum(w)
+            weight[k,:] = w
+            #expected log returns
+            expectedReturn[k] = np.sum(self.expected_log_returns * w)
+            #expected volitility
+            expectedVolatility[k] = np.sqrt(w.T @ Sigma @ w)
+            # Sharpe Ratio
+            sharpeRatio[k] = expectedReturn[k]/expectedVolatility[k]
+
+        maxIndex = sharpeRatio.argmax()
+        max_sharpe_w = weight[maxIndex, :]
+        print(f"maxIndex, {maxIndex}/n")
+        print(f"max_sharpe_w[0], {max_sharpe_w}")
+        return max_sharpe_w
+
+
+
+
+
+
+    # ---- Get portfolio metrics ----
+    def portfolio_return(self, weights: np.ndarray):
+        return weights @ self.expected_returns.T
+
+    def portfolio_log_return(self, weights: np.ndarray):
+        return weights @ self.expected_log_returns.T
+
+    def annualized_return(self, weights: np.ndarray):
+        daily_return = self.portfolio_log_return(weights)
+        annualized_return = daily_return * self.trading_periods
+        return annualized_return
     
-    return mean_log_returns.to_numpy()
-
-# Get covarience of return matrix
-def cov_return_matrix(returns):
-    return returns.cov().to_numpy()
-
-def test_mvp(w_mvp):
-    if (not np.isclose(sum(w_mvp), 1)):
-        raise("Weight is nowhere near 1")
-
-def number_of_securites(expected_return):
-    return np.shape(expected_return)[0]
-
-# Get weights
-def calculate_mvp(expected_return, cov_return_matrix):
-    n = np.shape(expected_return)[0] # amount of securites
-    u = np.ones(n, dtype=int) # allows me to get feasible set
-
-    inv_cov_return_matrix = inv(cov_return_matrix)
-    num = u @ inv_cov_return_matrix
-    den = u @ inv_cov_return_matrix @ u.T
-    w_mvp = num/den
-    test_mvp(w_mvp)
-    return w_mvp
-
-def portfolio_return(w_mvp, expected_return):
-    return w_mvp @ expected_return.T
-
-def portfolio_log_return(w_mvp, expected_log_return):
-    return w_mvp @ expected_log_return.T
-
-
-def portfolio_risk(w_mvp, cov_return_matrix):
-    return w_mvp @ cov_return_matrix @ w_mvp.T
+    def portfolio_risk(self, weights: np.ndarray):
+        return weights @ self.cov_return_matrix @ weights.T
+    
+    def portfolio_risk_annualized(self, weights: np.ndarray):
+        portfolio_variance = self.portfolio_risk(weights)
+        portfolio_std_dev_daily = np.sqrt(portfolio_variance)
+        annualized_std_dev = portfolio_std_dev_daily * np.sqrt(self.trading_periods)
+        return annualized_std_dev
 
 
 
@@ -112,7 +135,3 @@ def portfolio_risk(w_mvp, cov_return_matrix):
 
 
 
-# Sharpe Ratio
-
-
-# Return vs volatility
