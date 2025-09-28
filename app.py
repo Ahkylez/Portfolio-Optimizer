@@ -139,13 +139,11 @@ results = po.out_of_sample_backtest()
 if results: # Check if the backtest was successful
     plt.figure(figsize=(12, 6))
     
-    # Plot the MVP portfolio value
     results['MVP_Value'].plot(label='Minimum Volatility Portfolio (MVP)', linewidth=2)
-    
-    # Plot the Max Sharpe portfolio value
     results['MaxSharpe_Value'].plot(label='Maximum Sharpe Ratio Portfolio', linewidth=2)
-    
-    plt.title('Out-of-Sample Portfolio Backtest (Starting Value: $10,000) 📈', fontsize=16)
+    results['SP500_Value'].plot(label='S&P 500', linewidth=2)
+
+    plt.title('Out-of-Sample Portfolio Backtest (Starting Value: $1)', fontsize=16)
     plt.xlabel('Date', fontsize=12)
     plt.ylabel('Portfolio Value ($)', fontsize=12)
     plt.legend(loc='best')

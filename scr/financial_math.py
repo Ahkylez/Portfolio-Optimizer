@@ -232,6 +232,8 @@ class PortfolioOptimizer:
         if len(df_prices) < training_days * 1.5:
             print(f"Not enough data for backtest. Need at least {training_days} training days and some testing days.")
             return {}
+        
+        
 
         # Split Data
         training_prices = df_prices.iloc[:training_days]
@@ -253,6 +255,13 @@ class PortfolioOptimizer:
         # Max Sharpe Simulation
         sharpe_value_series = self._simulate_portfolio_value(w_sharpe, testing_prices, initial_investment)
         results['MaxSharpe_Value'] = sharpe_value_series
-        
 
+        # S&P 500 benchmark
+        benchmark = yf.download(tickers="^GSPC", period="2y", interval="1d", progress=False)
+        bench_price = benchmark['Close'] 
+        bench_testing_prices = bench_price.reindex(testing_prices.index).dropna()
+        sp500_value_series = self._simulate_portfolio_value(np.array([1.0]) , bench_testing_prices, initial_investment)
+        results['SP500_Value'] = sp500_value_series
+
+        
         return results
